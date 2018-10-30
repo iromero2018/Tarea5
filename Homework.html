@@ -1,0 +1,465 @@
+<!DOCTYPE html>
+<meta charset="utf-8">
+<script src="https://d3js.org/d3.v3.min.js"></script>
+   <script src="https://d3js.org/queue.v1.min.js"></script>
+   <script src="https://d3js.org/d3-scale-chromatic.v1.min.js"></script>
+   <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
+   <script src="https://cdnjs.cloudflare.com/ajax/libs/d3-legend/2.11.0/d3-legend.min.js"></script>
+   <script src="https://d3js.org/d3-time.v1.min.js"></script>
+   <script src="https://d3js.org/d3-time-format.v2.min.js"></script>
+   <script src="https://d3js.org/d3-color.v1.min.js"></script>
+   <script src="https://d3js.org/d3-interpolate.v1.min.js"></script>
+   <script src="https://d3js.org/d3-scale-chromatic.v1.min.js"></script>
+<style>
+ 
+    path.link {
+      fill: none;
+      stroke: #666;
+      stroke-width: 1.5px;
+    }
+     
+    path.link.baja {
+      opacity: 0.25;
+    }
+     
+    path.link.media {
+      opacity: 0.50;
+    }
+     
+    path.link.alta {
+      opacity: 0.75;
+    }
+     
+    path.link.extrema {
+      opacity: 1.0;
+    }
+     
+    circle {
+      fill: #ccc;
+      stroke: #fff;
+      stroke-width: 1.5px;
+    }
+     
+    text {
+      fill: #000;
+      font: 10px sans-serif;
+      pointer-events: none;
+    }
+
+    .tooltip {
+    background: #eee;
+    box-shadow: 0 0 5px #999999;
+    color: #333;
+    font-size: 10px;
+    left: 130px;
+    padding: 10px;
+    position: absolute;
+    text-align: center;
+    top: 95px;
+    z-index: 10;
+    display: block;
+    opacity: 0;
+  }
+
+ }
+  circle {
+    stroke: #565352;
+    stroke-width: 1;
+  }
+
+   body {
+            font-family: 'Catamaran', sans-serif;
+            margin: 20px;
+            top: 20px;
+            right: 20px;
+            bottom: 20px;
+            left: 20px;
+        }
+
+        line {
+            stroke: lightgray;
+        }
+
+        .arc path {
+            stroke: white;
+        }
+
+        .arc text {
+            fill: white;
+            stroke: none;
+            pointer-events: none;
+        }
+
+                
+     
+</style>
+<body>
+
+  <div class='container'>
+    <div class="page-header" align="center">
+      <h1>SUGA - Sistema Único de Gestión para el registro, evaluación y Autorización de Actividades de Aglomeración de Público en el Distrito Capital</h1>
+      <img src="http://datosabiertos.bogota.gov.co/base/imagenes/idiger.png" height="100" width="130" />
+    </div>
+
+      <div class="col-md-9">
+        <h3 ALIGN=center><b>Registro de actividades de aglomeración de público para el mes de agosto de 2018 en Bogotá</b></h3>
+        <p>El Instituto Distrital de Gestion de Riesgos y Cambio Climatico no es responsable de las actividades que generen aglomeración de publico sin importar su fin y que se desarrollen sin el concepto del plan de contingencias preparado para la misma, de igual manera no será responsable de los incidentes que puedan presentarse por el incumplimiento por parte del responsable de la actividad, de las condiciones y recursos presentados en los planes evaluados por IDIGER y podrá ser sancionado por la autoridades de policía.</p>
+        <p>Origen de Datos: <a href="http://datosabiertos.bogota.gov.co/dataset/3583644c-1538-46af-8b3f-f4b8d76db627/resource/efa012e3-5abc-48ce-81f9-ebe04a0ff253/download/export_agosto.xls">Datos Abiertos Bogotá</a></p>
+      </div>
+      <div class="col-md-3">
+        <h4><b>Guía de uso</b></h4>
+        <ul title="Guía">
+          <li type="square">Esta visualización nos permite observar el comportamiento de las solicitudes de restitución de tierras desde el 2011 hasta 2017.  Cada anillo representa un año y cada celda representa un mes específico de un año.  Adicionalmente, al seleccionar una celda se resaltan los valores del mismo mes durante todos los años.</li>
+          <li type="square">El modimso cuenta con una funcionalidad de tooltip que permite conocer la cantidad de solicitudes de la celda.</li>
+          <li type="square">Los colores de las celdas dependen de la cantidad de solicitudes de restitución. La luminocidad se presenta a continuación:</li>
+        </ul>
+      </div>
+      
+  </div>
+
+  
+  <h4>Analizando la información como una Network</h4>
+  <div id="chart1" align="center"></div>
+  
+  <h4>Analizando en forma de cluster, quedaría sí:</h4>
+  <div id="chart2" align="center"></div>
+
+<script>
+ 
+var tooltip = d3.select("body")
+              .append('div')
+              .attr('class', 'tooltip')
+              .attr("fill","#000000" ) ;
+
+
+ // map etiquetas
+  tooltip.append('div')
+    .attr('class', 'label');
+  tooltip.append('div')
+    .attr('class', 'Valor');              
+
+// get the data
+d3.csv("https://raw.githubusercontent.com/iromero2018/Tarea5/master/force.csv", function(error, links) {
+
+var nodes = {};
+ 
+// Compute the distinct nodes from the links.
+links.forEach(function(link) {
+    link.source = nodes[link.source] || 
+        (nodes[link.source] = {name: link.source});
+    link.target = nodes[link.target] || 
+        (nodes[link.target] = {name: link.target});
+    link.value = +link.value;
+});
+ 
+var width = window.innerWidth,
+    height = window.innerHeight,
+    color = d3.scale.category20();
+
+ var force = d3.layout.force()
+    .nodes(d3.values(nodes))
+    .links(links)
+    .size([width, height])
+    .charge (-4000)
+    .linkDistance(50)
+    .gravity(2)
+    .friction(0.5)
+    .on("tick", tick)
+    .theta(0.8)
+    .alpha(0.5)
+    .start();
+
+// Set the range
+var  v = d3.scale.linear().range([0, 100]);
+v.domain([0, d3.max(links, function(d) { return d.value; })]);
+
+links.forEach(function(link) {
+  if (v(link.value) <=  25) {
+    link.type = "baja";
+  } else if (v(link.value) <=  50 && v(link.value) > 25) {
+    link.type = "media";
+  } else if (v(link.value) <=  75 && v(link.value) > 50) {
+    link.type = "alta";
+  } else if (v(link.value) <=  100 && v(link.value) >  75) {
+    link.type = "extrema";
+  }
+ 
+});
+ 
+//var svg = d3.select("body").append("svg")
+  var svg = d3.select("#chart1").append("svg")
+    .attr("width", width)
+    .attr("height", height)
+ 
+// build the arrow.
+svg.append("svg:defs").selectAll("marker")
+    .data(["end"])      // Different link/path types can be defined here
+  .enter().append("svg:marker")    // This section adds in the arrows
+    .attr("id", String)
+    .attr("viewBox", "0 -5 10 10")
+    .attr("refX", 15)
+    .attr("refY", -1.5)
+    .attr("markerWidth", 6)
+    .attr("markerHeight", 6)
+    .attr("orient", "auto")
+  .append("svg:path")
+    .attr("d", "M0,-5L10,0L0,5");
+ 
+// add the links and the arrows
+var path = svg.append("svg:g").selectAll("path")
+    .data(force.links())
+  .enter().append("svg:path")
+    .attr("class", function(d) { return "link " + d.type; })
+    .attr("marker-end", "url(#end)")
+    .on('mouseover', function(d) {
+             // tooltip.select('.parentesco').html("<b> parentesco: " + d.parentesco  + "</b>");
+               tooltip.select('.label').html("<b> Complejidad : " + d.type  + "</b>");
+               tooltip.select('.Valor').html("<b> Aforo : " + d3.format(",") (d.value)  + "%</b>");
+               tooltip.style('display', 'block');
+               tooltip.style('opacity',2)
+           })    
+           .on('mousemove', function(d) {
+
+                        tooltip.style('top', (d3.event.layerY + 10) + 'px')
+                        .style('left', (d3.event.layerX - 25) + 'px');
+          })
+          .on('mouseout', function(d) {
+                        tooltip.style('display', 'none');
+                        tooltip.style('opacity',0)
+          }) 
+    ;
+
+// define the nodes
+var node = svg.selectAll(".node")
+    .data(force.nodes())
+  .enter().append("g")
+    .attr("class", "node")
+    .on("click", click)
+    .on("dblclick", dblclick)
+    .call(force.drag);
+ 
+// add the nodes
+node.append("circle")
+    .attr("r", 8)
+    .style("fill", function(d) { return color(d.name); });
+
+ 
+// add the text 
+node.append("text")
+    .attr("x", 12)
+    .attr("dy", ".35em")
+    .text(function(d) { return d.name; });
+ 
+// add the curvy lines
+function tick() {
+    path.attr("d", function(d) {
+        var dx = d.target.x - d.source.x,
+            dy = d.target.y - d.source.y,
+            dr = Math.sqrt(dx * dx + dy * dy);
+        return "M" + 
+            d.source.x + "," + 
+            d.source.y + "A" + 
+            dr + "," + dr + " 0 0,1 " + 
+            d.target.x + "," + 
+            d.target.y;
+    });
+ 
+    node
+        .attr("transform", function(d) { 
+		    return "translate(" + d.x + "," + d.y + ")"; });
+}
+ 
+// action to take on mouse click
+function click() {
+    d3.select(this).select("text").transition()
+        .duration(750)
+        .attr("x", 22)
+        .style("stroke", "lightsteelblue")
+        .style("stroke-width", ".5px")
+        .style("font", "20px sans-serif");
+    d3.select(this).select("circle").transition()
+        .duration(750)
+        .attr("r", 16);
+}
+ 
+// action to take on mouse double click
+function dblclick() {
+    d3.select(this).select("circle").transition()
+        .duration(750)
+        .attr("r", 6);
+    d3.select(this).select("text").transition()
+        .duration(750)
+        .attr("x", 12)
+        .style("stroke", "none")
+        .style("fill", "black")
+        .style("stroke", "none")
+        .style("font", "10px sans-serif");
+}
+ 
+});
+ 
+</script>
+
+<script>
+
+var width = window.innerWidth,
+    height = window.innerHeight,
+    padding = 1, // separation between same-color nodes
+    clusterPadding = 4, // separation between different-color nodes
+    maxRadius = 4;
+
+var color = d3.scale.category20();
+
+d3.text("https://raw.githubusercontent.com/iromero2018/Tarea5/master/word_groups.csv", function(error, text) {
+  if (error) throw error;
+  var colNames = "text,size,group\n" + text;
+  var data = d3.csv.parse(colNames);
+
+  data.forEach(function(d) {
+    d.size = +d.size;
+  });
+
+
+//unique cluster/group id's
+var cs = [];
+data.forEach(function(d){
+        if(!cs.contains(d.group)) {
+            cs.push(d.group);
+        }
+});
+
+var n = data.length, // total number of nodes
+    m = cs.length; // number of distinct clusters
+
+//create clusters and nodes
+var clusters = new Array(m);
+var nodes = [];
+for (var i = 0; i<n; i++){
+    nodes.push(create_nodes(data,i));
+}
+
+var force = d3.layout.force()
+    .nodes(nodes)
+    .size([width, height])
+    .gravity(.02)
+    .charge(0)
+    .on("tick", tick)
+    .start();
+
+//var svg = d3.select("body").append("svg")
+var svg = d3.select("#chart2").append("svg")
+    .attr("width", width)
+    .attr("height", height);
+
+
+var node = svg.selectAll("circle")
+    .data(nodes)
+    .enter().append("g").call(force.drag);
+
+
+node.append("circle")
+    .style("fill", function (d) {
+    return color(d.cluster);
+    })
+    .attr("r", function(d){return d.radius})
+    
+
+node.append("text")
+      .attr("dy", ".3em")
+      .style("text-anchor", "middle")
+      .text(function(d) { return d.text.substring(0, d.radius / 3); });
+
+
+
+
+function create_nodes(data,node_counter) {
+  var i = cs.indexOf(data[node_counter].group),
+      r = Math.sqrt((i + 1) / m * -Math.log(Math.random())) * maxRadius,
+      d = {
+        cluster: i,
+        radius: data[node_counter].size*1.5,
+        text: data[node_counter].text,
+        x: Math.cos(i / m * 2 * Math.PI) * 200 + width / 2 + Math.random(),
+        y: Math.sin(i / m * 2 * Math.PI) * 200 + height / 2 + Math.random()
+      };
+  if (!clusters[i] || (r > clusters[i].radius)) clusters[i] = d;
+  return d;
+};
+
+
+
+function tick(e) {
+    node.each(cluster(10 * e.alpha * e.alpha))
+        .each(collide(.5))
+    .attr("transform", function (d) {
+        var k = "translate(" + d.x + "," + d.y + ")";
+        return k;
+    })
+
+}
+
+// Move d to be adjacent to the cluster node.
+function cluster(alpha) {
+    return function (d) {
+        var cluster = clusters[d.cluster];
+        if (cluster === d) return;
+        var x = d.x - cluster.x,
+            y = d.y - cluster.y,
+            l = Math.sqrt(x * x + y * y),
+            r = d.radius + cluster.radius;
+        if (l != r) {
+            l = (l - r) / l * alpha;
+            d.x -= x *= l;
+            d.y -= y *= l;
+            cluster.x += x;
+            cluster.y += y;
+        }
+    };
+}
+
+// Resolves collisions between d and all other circles.
+function collide(alpha) {
+    var quadtree = d3.geom.quadtree(nodes);
+    return function (d) {
+        var r = d.radius + maxRadius + Math.max(padding, clusterPadding),
+            nx1 = d.x - r,
+            nx2 = d.x + r,
+            ny1 = d.y - r,
+            ny2 = d.y + r;
+        quadtree.visit(function (quad, x1, y1, x2, y2) {
+            if (quad.point && (quad.point !== d)) {
+                var x = d.x - quad.point.x,
+                    y = d.y - quad.point.y,
+                    l = Math.sqrt(x * x + y * y),
+                    r = d.radius + quad.point.radius + (d.cluster === quad.point.cluster ? padding : clusterPadding);
+                if (l < r) {
+                    l = (l - r) / l * alpha;
+                    d.x -= x *= l;
+                    d.y -= y *= l;
+                    quad.point.x += x;
+                    quad.point.y += y;
+                }
+            }
+            return x1 > nx2 || x2 < nx1 || y1 > ny2 || y2 < ny1;
+        });
+    };
+}
+});
+
+Array.prototype.contains = function(v) {
+    for(var i = 0; i < this.length; i++) {
+        if(this[i] === v) return true;
+    }
+    return false;
+};
+
+</script>
+<!-- <div id="footer" align="center"> -->
+ <footer align="center" style="font-size: 12px;">
+            Iván Rodrigo Romero Flórez<br>
+            ir.romero@uniandes.edu.co<br>
+            Universidad de los Andes
+    </footer>
+<!--   </div> -->
+  </body>
+</html>
